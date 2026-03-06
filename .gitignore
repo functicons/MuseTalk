@@ -16,3 +16,6 @@ ffplay*
 debug
 exp_out
 .gradio
+.venv/
+.python-version
+CLAUDE.md

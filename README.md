@@ -207,13 +207,13 @@ We provide two scripts for automatic downloading:
 
 For Linux:
 ```bash
-sh ./download_weights.sh
+sh scripts/download_weights.sh
 ```
 
 For Windows:
 ```batch
 # Run the script
-download_weights.bat
+scripts\download_weights.bat
 ```
 
 #### Option 2: Manual Download
@@ -272,10 +272,10 @@ If ffmpeg is not found, please install it first:
 ##### Linux Environment
 ```bash
 # MuseTalk 1.5 (Recommended)
-sh inference.sh v1.5 normal
+sh scripts/inference.sh v1.5 normal
 
 # MuseTalk 1.0
-sh inference.sh v1.0 normal
+sh scripts/inference.sh v1.0 normal
 ```
 
 ##### Windows Environment
@@ -296,10 +296,10 @@ python -m scripts.inference --inference_config configs\inference\test.yaml --res
 ##### Linux Environment
 ```bash
 # MuseTalk 1.5 (Recommended)
-sh inference.sh v1.5 realtime
+sh scripts/inference.sh v1.5 realtime
 
 # MuseTalk 1.0
-sh inference.sh v1.0 realtime
+sh scripts/inference.sh v1.0 realtime
 ```
 
 ##### Windows Environment
@@ -366,12 +366,12 @@ After data preprocessing, you can start the training process:
 
 1. **First Stage**
    ```bash
-   sh train.sh stage1
+   sh scripts/train.sh stage1
    ```
 
 2. **Second Stage**
    ```bash
-   sh train.sh stage2
+   sh scripts/train.sh stage2
    ```
 
 ### Configuration Adjustment

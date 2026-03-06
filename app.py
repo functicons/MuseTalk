@@ -153,9 +153,9 @@ def download_model():
             print(f"- {model}")
         print("\nPlease run the download script to download the missing models:")
         if sys.platform == "win32":
-            print("Windows: Run download_weights.bat")
+            print("Windows: Run scripts\\download_weights.bat")
         else:
-            print("Linux/Mac: Run ./download_weights.sh")
+            print("Linux/Mac: Run scripts/download_weights.sh")
         sys.exit(1)
     else:
         print("All required model files exist.")

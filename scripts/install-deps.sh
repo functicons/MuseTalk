@@ -142,7 +142,15 @@ if [ "${SKIP_MMLAB}" -eq 0 ]; then
 
     run_cmd pip install --no-cache-dir -U openmim
     run_cmd mim install mmengine
-    run_cmd mim install "mmcv==2.0.1"
+
+    # mmcv: on macOS, mim install doesn't compile C extensions properly.
+    # Use pip directly with MMCV_WITH_OPS=1 and FORCE_CUDA=0 to ensure ops are built.
+    if [ "$(uname -s)" = "Darwin" ]; then
+        run_cmd env MMCV_WITH_OPS=1 FORCE_CUDA=0 \
+            pip install "mmcv==2.0.1" --no-build-isolation --no-cache-dir
+    else
+        run_cmd mim install "mmcv==2.0.1"
+    fi
     run_cmd mim install "mmdet==3.1.0"
     # Pre-install mmpose deps that fail in build isolation:
     # - chumpy: broken setup.py tries to import pip

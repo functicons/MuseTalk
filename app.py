@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import time
 import pdb
 import re
@@ -170,6 +174,7 @@ from musetalk.utils.face_parsing import FaceParsing
 from musetalk.utils.audio_processor import AudioProcessor
 from musetalk.utils.utils import get_file_type, get_video_fps, datagen, load_all_model
 from musetalk.utils.preprocessing import get_landmark_and_bbox, read_imgs, coord_placeholder, get_bbox_range
+from musetalk.utils.tts import text_to_wav, DEFAULT_VOICE_ID, DEFAULT_SPEED
 
 
 def fast_check_ffmpeg():
@@ -474,6 +479,43 @@ def check_video(video):
 
 
 
+@torch.no_grad()
+def inference_with_tts(text, video_path, bbox_shift, extra_margin=10, parsing_mode="jaw",
+                       left_cheek_width=90, right_cheek_width=90,
+                       tts_voice_id=DEFAULT_VOICE_ID,
+                       tts_speed=DEFAULT_SPEED, tts_language="en",
+                       progress=gr.Progress(track_tqdm=True)):
+    """Generate lip-sync video from text input using TTS."""
+    if not text or not text.strip():
+        raise gr.Error("Please enter some text")
+    if not video_path:
+        raise gr.Error("Please upload a reference video")
+
+    os.makedirs("./results/tts", exist_ok=True)
+    tts_output = f"./results/tts/tts_{int(time.time())}.wav"
+    try:
+        audio_path = text_to_wav(
+            text=text,
+            output_path=tts_output,
+            voice_id=tts_voice_id,
+            speed=tts_speed,
+            language=tts_language,
+        )
+    except ValueError as e:
+        raise gr.Error(str(e))
+    except RuntimeError as e:
+        raise gr.Error(f"TTS failed: {e}")
+
+    try:
+        return inference(
+            audio_path, video_path, bbox_shift, extra_margin, parsing_mode,
+            left_cheek_width, right_cheek_width, progress,
+        )
+    finally:
+        if os.path.exists(tts_output):
+            os.remove(tts_output)
+
+
 css = """#input_img {max-width: 1024px !important} #output_vid {max-width: 1024px; max-height: 576px}"""
 
 with gr.Blocks(css=css) as demo:
@@ -501,8 +543,24 @@ with gr.Blocks(css=css) as demo:
 
     with gr.Row():
         with gr.Column():
-            audio = gr.Audio(label="Drving Audio",type="filepath")
-            video = gr.Video(label="Reference Video",sources=['upload'])
+            video = gr.Video(label="Reference Video", sources=['upload'])
+            with gr.Tabs():
+                with gr.TabItem("Upload Audio"):
+                    audio = gr.Audio(label="Driving Audio", type="filepath")
+                with gr.TabItem("Text to Speech"):
+                    tts_text = gr.Textbox(label="Text", lines=3, max_length=2000,
+                        value="Hey there! I'm your digital assistant. What can I do for you today?",
+                        placeholder="Enter text to synthesize...")
+                    with gr.Row():
+                        tts_voice_id = gr.Textbox(
+                            label="Voice ID", value=DEFAULT_VOICE_ID,
+                            info="Cartesia voice ID (default: SARAH_CURIOUS_EN)")
+                        tts_speed = gr.Dropdown(
+                            label="Speed", value=DEFAULT_SPEED,
+                            choices=["slowest", "slow", "normal", "fast", "fastest"])
+                        tts_language = gr.Dropdown(
+                            label="Language", value="en",
+                            choices=["en", "es", "fr", "de", "pt", "zh", "ja"])
             bbox_shift = gr.Number(label="BBox_shift value, px", value=0)
             extra_margin = gr.Slider(label="Extra Margin", minimum=0, maximum=40, value=10, step=1)
             parsing_mode = gr.Radio(label="Parsing Mode", choices=["jaw", "raw"], value="jaw")
@@ -511,38 +569,39 @@ with gr.Blocks(css=css) as demo:
             bbox_shift_scale = gr.Textbox(label="'left_cheek_width' and 'right_cheek_width' parameters determine the range of left and right cheeks editing when parsing model is 'jaw'. The 'extra_margin' parameter determines the movement range of the jaw. Users can freely adjust these three parameters to obtain better inpainting results.")
 
             with gr.Row():
-                debug_btn = gr.Button("1. Test Inpainting ")
-                btn = gr.Button("2. Generate")
+                debug_btn = gr.Button("1. Test Inpainting")
+                btn = gr.Button("2. Generate (Audio)")
+                btn_tts = gr.Button("2. Generate (Text)")
         with gr.Column():
             debug_image = gr.Image(label="Test Inpainting Result (First Frame)")
             debug_info = gr.Textbox(label="Parameter Information", lines=5)
             out1 = gr.Video()
-    
+
     video.change(
         fn=check_video, inputs=[video], outputs=[video]
     )
     btn.click(
         fn=inference,
         inputs=[
-            audio,
-            video,
-            bbox_shift,
-            extra_margin,
-            parsing_mode,
-            left_cheek_width,
-            right_cheek_width
+            audio, video, bbox_shift, extra_margin, parsing_mode,
+            left_cheek_width, right_cheek_width
         ],
-        outputs=[out1,bbox_shift_scale]
+        outputs=[out1, bbox_shift_scale]
+    )
+    btn_tts.click(
+        fn=inference_with_tts,
+        inputs=[
+            tts_text, video, bbox_shift, extra_margin, parsing_mode,
+            left_cheek_width, right_cheek_width,
+            tts_voice_id, tts_speed, tts_language
+        ],
+        outputs=[out1, bbox_shift_scale]
     )
     debug_btn.click(
         fn=debug_inpainting,
         inputs=[
-            video,
-            bbox_shift,
-            extra_margin,
-            parsing_mode,
-            left_cheek_width,
-            right_cheek_width
+            video, bbox_shift, extra_margin, parsing_mode,
+            left_cheek_width, right_cheek_width
         ],
         outputs=[debug_image, debug_info]
     )

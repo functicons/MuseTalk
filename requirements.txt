@@ -17,3 +17,4 @@ imageio[ffmpeg]
 omegaconf
 ffmpeg-python
 moviepy
+python-dotenv
